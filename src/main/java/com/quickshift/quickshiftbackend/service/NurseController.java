@@ -13,7 +13,7 @@ import java.util.Map;
 @RequestMapping("/nurses")
 @CrossOrigin
 @Validated
-public class Controller {
+public class NurseController {
 
     private final NurseService nurseService = new NurseService();
 

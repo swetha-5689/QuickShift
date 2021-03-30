@@ -1,15 +1,25 @@
 package com.quickshift.quickshiftbackend.models;
 
+
+//Each slot for working
+
+import org.optaplanner.core.api.domain.lookup.PlanningId;
+
 public class Timeslot {
     String start;
     String end;
+    @PlanningId
+    String slotId;
 
     public Timeslot() {
     }
 
-    public Timeslot(String start, String end) {
-        this.start = start;
-        this.end = end;
+    public String getSlotId() {
+        return slotId;
+    }
+
+    public void setSlotId(String slotId) {
+        this.slotId = slotId;
     }
 
     public String getStart() {

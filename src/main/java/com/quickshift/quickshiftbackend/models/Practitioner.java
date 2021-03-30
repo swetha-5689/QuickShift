@@ -1,6 +1,9 @@
 package com.quickshift.quickshiftbackend.models;
 
+import org.optaplanner.core.api.domain.lookup.PlanningId;
+
 public class Practitioner {
+    @PlanningId
     String id;
 
     public String getId() {

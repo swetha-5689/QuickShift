@@ -3,7 +3,7 @@ package com.quickshift.quickshiftbackend.models;
 import java.util.List;
 
 public class RequestModel {
-    private List<ScheduleRequest> scheduleRequests;
+    private List<RequestOff> requestOffs;
     private List<Practitioner> practitioners;
     private List<Timeslot> timeslots;
 
@@ -23,19 +23,19 @@ public class RequestModel {
         this.timeslots = timeslots;
     }
 
-    public List<ScheduleRequest> getScheduleRequests() {
-        return scheduleRequests;
+    public List<RequestOff> getRequestOffs() {
+        return requestOffs;
     }
 
-    public void setScheduleRequests(List<ScheduleRequest> scheduleRequests) {
-        this.scheduleRequests = scheduleRequests;
+    public void setRequestOffs(List<RequestOff> requestOffs) {
+        this.requestOffs = requestOffs;
     }
 
     public RequestModel() {
     }
 
-    public RequestModel(List<ScheduleRequest> scheduleRequests, List<Practitioner> practitionerList, List<Timeslot> timeslots) {
-        this.scheduleRequests = scheduleRequests;
+    public RequestModel(List<RequestOff> requestOffs, List<Practitioner> practitionerList, List<Timeslot> timeslots) {
+        this.requestOffs = requestOffs;
         this.practitioners = practitionerList;
         this.timeslots = timeslots;
     }

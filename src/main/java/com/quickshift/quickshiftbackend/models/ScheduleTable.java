@@ -26,14 +26,26 @@ public class ScheduleTable {
     @ProblemFactCollectionProperty
     List<Timeslot> timeslots;
 
+    @ProblemFactCollectionProperty
+    List<RequestOff> requestOffs;
+
     public HardSoftScore getHardSoftScore() {
         return hardSoftScore;
     }
 
-    public ScheduleTable(List<Schedule> schedules, List<Practitioner> practitioners, List<Timeslot> timeslots, HardSoftScore hardSoftScore, SolverStatus solverStatus) {
+    public List<RequestOff> getRequestOffs() {
+        return requestOffs;
+    }
+
+    public void setRequestOffs(List<RequestOff> requestOffs) {
+        this.requestOffs = requestOffs;
+    }
+
+    public ScheduleTable(List<Schedule> schedules, List<Practitioner> practitioners, List<Timeslot> timeslots, List<RequestOff> requestOffs, HardSoftScore hardSoftScore, SolverStatus solverStatus) {
         this.schedules = schedules;
         this.practitioners = practitioners;
         this.timeslots = timeslots;
+        this.requestOffs = requestOffs;
         this.hardSoftScore = hardSoftScore;
         this.solverStatus = solverStatus;
     }
@@ -51,6 +63,7 @@ public class ScheduleTable {
         this.schedules = new ArrayList<>();
         this.practitioners = new ArrayList<>();
         this.timeslots = new ArrayList<>();
+        this.requestOffs = new ArrayList<>();
     }
 
     public List<Practitioner> getPractitioners() {

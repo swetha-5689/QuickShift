@@ -1,7 +1,7 @@
 package com.quickshift.quickshiftbackend.models;
 //For days off and holidays
 public class RequestOff {
-    String practitioner;
+    Practitioner practitioner;
     int priority;
     String dateStart;
     String dateEnd;
@@ -9,18 +9,18 @@ public class RequestOff {
     public RequestOff() {
     }
 
-    public RequestOff(String practitioner, int priority, String dateStart, String dateEnd) {
+    public RequestOff(Practitioner practitioner, int priority, String dateStart, String dateEnd) {
         this.practitioner = practitioner;
         this.priority = priority;
         this.dateStart = dateStart;
         this.dateEnd = dateEnd;
     }
 
-    public String getPractitioner() {
+    public Practitioner getPractitioner() {
         return practitioner;
     }
 
-    public void setPractitioner(String practitioner) {
+    public void setPractitioner(Practitioner practitioner) {
         this.practitioner = practitioner;
     }
 

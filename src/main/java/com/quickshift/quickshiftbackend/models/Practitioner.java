@@ -20,4 +20,11 @@ public class Practitioner {
     public Practitioner(String id) {
         this.id = id;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Practitioner)) return false;
+        else if(((Practitioner) obj).getId().equals(this.getId())) return true;
+        return false;
+    }
 }

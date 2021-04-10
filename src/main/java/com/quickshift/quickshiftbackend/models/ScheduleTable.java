@@ -5,6 +5,7 @@ import org.optaplanner.core.api.domain.solution.PlanningScore;
 import org.optaplanner.core.api.domain.solution.PlanningSolution;
 import org.optaplanner.core.api.domain.solution.ProblemFactCollectionProperty;
 import org.optaplanner.core.api.domain.valuerange.ValueRangeProvider;
+import org.optaplanner.core.api.score.buildin.hardmediumsoft.HardMediumSoftScore;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.solver.SolverStatus;
 import org.springframework.stereotype.Component;
@@ -29,8 +30,8 @@ public class ScheduleTable {
     @ProblemFactCollectionProperty
     List<RequestOff> requestOffs;
 
-    public HardSoftScore getHardSoftScore() {
-        return hardSoftScore;
+    public HardMediumSoftScore getHardMediumSoftScore() {
+        return hardMediumSoftScore;
     }
 
     public List<RequestOff> getRequestOffs() {
@@ -46,16 +47,16 @@ public class ScheduleTable {
         this.practitioners = practitioners;
         this.timeslots = timeslots;
         this.requestOffs = requestOffs;
-        this.hardSoftScore = hardSoftScore;
+        this.hardMediumSoftScore = hardMediumSoftScore;
         this.solverStatus = solverStatus;
     }
 
-    public void setHardSoftScore(HardSoftScore hardSoftScore) {
-        this.hardSoftScore = hardSoftScore;
+    public void setHardSoftScore(HardMediumSoftScore hardMediumSoftScore) {
+        this.hardMediumSoftScore = hardMediumSoftScore;
     }
 
     @PlanningScore
-    private HardSoftScore hardSoftScore;
+    private HardMediumSoftScore hardMediumSoftScore;
 
     private SolverStatus solverStatus;
 

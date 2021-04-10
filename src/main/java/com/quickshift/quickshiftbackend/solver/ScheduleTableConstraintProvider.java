@@ -26,7 +26,10 @@ public class ScheduleTableConstraintProvider implements ConstraintProvider {
                 practitionerConflict(constraintFactory),
                 timeslotConflict(constraintFactory),
                 assignEveryTimeslot(constraintFactory),
-                weeklyHoursLimit(constraintFactory)
+                weeklyHoursUpperLimit(constraintFactory),
+                weeklyHoursLowerLimit(constraintFactory),
+                noMoreThanTwoConsecutiveShifts(constraintFactory),
+                
         };
     }
 
@@ -59,7 +62,7 @@ public class ScheduleTableConstraintProvider implements ConstraintProvider {
                 .penalize("Assign practitioner to every timeslot", HardMediumSoftScore.ONE_HARD);
     }
 
-    Constraint weeklyHoursLimit(ConstraintFactory constraintFactory) {
+    Constraint weeklyHoursUpperLimit(ConstraintFactory constraintFactory) {
         return constraintFactory.from(Practitioner.class)
                 .join(Schedule.class, equal(Function.identity(), Schedule::getPractitioner))
                 .groupBy((practitioner, schedule) -> practitioner,
@@ -70,6 +73,23 @@ public class ScheduleTableConstraintProvider implements ConstraintProvider {
                 .filter((practitioner, day, time) -> time.toHoursPart() > 40)
                 .penalize("Practitioners cannot work more than 40 hours per week", HardMediumSoftScore.ONE_HARD);
     }
-
+    Constraint weeklyHoursLowerLimit(ConstraintFactory constraintFactory) {
+        return constraintFactory.from(Practitioner.class)
+                .join(Schedule.class, equal(Function.identity(), Schedule::getPractitioner))
+                .groupBy((practitioner, schedule) -> practitioner,
+                        ((practitioner, schedule) -> ZonedDateTime.parse(schedule.getTimeslot().getStart()).toLocalDate()
+                                .with(TemporalAdjusters.firstDayOfMonth())),
+                        sumDuration((practitioner, schedule) -> Duration.between(ZonedDateTime.parse(schedule.getTimeslot().getStart()),
+                                ZonedDateTime.parse(schedule.getTimeslot().getEnd()))))
+                .filter((practitioner, day, time) -> time.toHoursPart() <= 20)
+                .penalize("Practitioners cannot work less than 20 hours per month", HardMediumSoftScore.ONE_HARD);
+    }
+    Constraint noMoreThanTwoConsecutiveShifts(ConstraintFactory constraintFactory) {
+        return constraintFactory.fromUniquePair(Schedule.class)
+                .filter((schedule, schedule2) -> (Duration.between(ZonedDateTime.parse(schedule.getTimeslot().getEnd()).toLocalDate(),
+                        ZonedDateTime.parse(schedule2.getTimeslot().getStart()).toLocalDate()).toHoursPart() <= 10))
+                .filter(((schedule, schedule2) -> schedule.getPractitioner().equals(schedule2.getPractitioner())))
+                .penalize("Practitioners cannot work consecutive shifts", HardMediumSoftScore.ONE_HARD);
+    }
 
 }

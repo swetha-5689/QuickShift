@@ -1,12 +1,15 @@
 package com.quickshift.quickshiftbackend.solver;
 
 import static org.optaplanner.core.api.score.stream.ConstraintCollectors.sumDuration;
+import static org.optaplanner.core.api.score.stream.Joiners.*;
+
 import com.quickshift.quickshiftbackend.models.Practitioner;
+import com.quickshift.quickshiftbackend.models.RequestOff;
 import com.quickshift.quickshiftbackend.models.Schedule;
 import com.quickshift.quickshiftbackend.models.Timeslot;
 import org.optaplanner.core.api.score.buildin.hardmediumsoft.HardMediumSoftScore;
 import org.optaplanner.core.api.score.stream.Constraint;
-import static org.optaplanner.core.api.score.stream.Joiners.equal;
+
 import org.optaplanner.core.api.score.stream.ConstraintFactory;
 import org.optaplanner.core.api.score.stream.ConstraintProvider;
 import org.optaplanner.core.api.score.stream.Joiners;
@@ -22,14 +25,16 @@ public class ScheduleTableConstraintProvider implements ConstraintProvider {
     @Override
     public Constraint[] defineConstraints(ConstraintFactory constraintFactory) {
         return new Constraint[] {
-                dailyHoursLimit(constraintFactory),
+                weeklyHoursUpperLimit(constraintFactory),
                 practitionerConflict(constraintFactory),
                 timeslotConflict(constraintFactory),
                 assignEveryTimeslot(constraintFactory),
-                weeklyHoursUpperLimit(constraintFactory),
-                weeklyHoursLowerLimit(constraintFactory),
-                noMoreThanTwoConsecutiveShifts(constraintFactory),
-                
+                dailyHoursLimit(constraintFactory),
+                monthlyHoursLowerLimit(constraintFactory),
+                noTwoConsecutiveShifts(constraintFactory),
+                requestOffShiftsHigh(constraintFactory),
+                requestOffShiftsLow(constraintFactory),
+                requestOffShiftsMedium(constraintFactory)
         };
     }
 
@@ -52,13 +57,13 @@ public class ScheduleTableConstraintProvider implements ConstraintProvider {
                         ((practitioner, schedule) -> ZonedDateTime.parse(schedule.getTimeslot().getStart()).toLocalDate()),
                         sumDuration((practitioner, schedule) -> Duration.between(ZonedDateTime.parse(schedule.getTimeslot().getStart()),
                                 ZonedDateTime.parse(schedule.getTimeslot().getEnd()))))
-                .filter((practitioner, day, time) -> time.toHoursPart() > 12)
+                .filter((practitioner, day, time) -> time.toMinutes() > 720)
                 .penalize("Practitioners cannot work more than 12 hours per day", HardMediumSoftScore.ONE_HARD);
     }
 
     Constraint assignEveryTimeslot(ConstraintFactory constraintFactory) {
-        return constraintFactory.from(Timeslot.class)
-                .ifNotExists(Schedule.class, Joiners.equal(Function.identity(), Schedule::getTimeslot))
+        return constraintFactory.fromUnfiltered(Schedule.class)
+                .filter((schedule -> schedule.getPractitioner() == null || schedule.getTimeslot() == null))
                 .penalize("Assign practitioner to every timeslot", HardMediumSoftScore.ONE_HARD);
     }
 
@@ -70,10 +75,10 @@ public class ScheduleTableConstraintProvider implements ConstraintProvider {
                                 .with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))),
                         sumDuration((practitioner, schedule) -> Duration.between(ZonedDateTime.parse(schedule.getTimeslot().getStart()),
                                 ZonedDateTime.parse(schedule.getTimeslot().getEnd()))))
-                .filter((practitioner, day, time) -> time.toHoursPart() > 40)
+                .filter((practitioner, day, time) -> time.toMinutes() > 2400)
                 .penalize("Practitioners cannot work more than 40 hours per week", HardMediumSoftScore.ONE_HARD);
     }
-    Constraint weeklyHoursLowerLimit(ConstraintFactory constraintFactory) {
+    Constraint monthlyHoursLowerLimit(ConstraintFactory constraintFactory) {
         return constraintFactory.from(Practitioner.class)
                 .join(Schedule.class, equal(Function.identity(), Schedule::getPractitioner))
                 .groupBy((practitioner, schedule) -> practitioner,
@@ -82,14 +87,50 @@ public class ScheduleTableConstraintProvider implements ConstraintProvider {
                         sumDuration((practitioner, schedule) -> Duration.between(ZonedDateTime.parse(schedule.getTimeslot().getStart()),
                                 ZonedDateTime.parse(schedule.getTimeslot().getEnd()))))
                 .filter((practitioner, day, time) -> time.toHoursPart() <= 20)
-                .penalize("Practitioners cannot work less than 20 hours per month", HardMediumSoftScore.ONE_HARD);
+                .penalize("Practitioners cannot work less than 20 hours per month", HardMediumSoftScore.ONE_SOFT);
     }
-    Constraint noMoreThanTwoConsecutiveShifts(ConstraintFactory constraintFactory) {
+
+    Constraint noTwoConsecutiveShifts(ConstraintFactory constraintFactory) {
         return constraintFactory.fromUniquePair(Schedule.class)
-                .filter((schedule, schedule2) -> (Duration.between(ZonedDateTime.parse(schedule.getTimeslot().getEnd()).toLocalDate(),
-                        ZonedDateTime.parse(schedule2.getTimeslot().getStart()).toLocalDate()).toHoursPart() <= 10))
+                .filter((schedule, schedule2) -> (Duration.between(ZonedDateTime.parse(schedule.getTimeslot().getEnd()).toLocalDateTime(),
+                        ZonedDateTime.parse(schedule2.getTimeslot().getStart()).toLocalDateTime()).toHoursPart() <= 10))
                 .filter(((schedule, schedule2) -> schedule.getPractitioner().equals(schedule2.getPractitioner())))
                 .penalize("Practitioners cannot work consecutive shifts", HardMediumSoftScore.ONE_HARD);
+    }
+    Constraint requestOffShiftsHigh(ConstraintFactory constraintFactory) {
+        return constraintFactory.from(Schedule.class)
+                .join(RequestOff.class, equal(Schedule::getPractitioner, RequestOff::getPractitioner))
+                .groupBy(((schedule, requestOff) -> schedule.getTimeslot()),
+                        ((schedule, requestOff) -> requestOff))
+                .filter((timeslot, requestOff) -> ZonedDateTime.parse(timeslot.getStart()).toLocalDateTime()
+                        .isAfter(ZonedDateTime.parse(requestOff.getDateStart()).toLocalDateTime()) &&
+                        ZonedDateTime.parse(timeslot.getStart()).toLocalDateTime().isBefore(ZonedDateTime.parse(requestOff.getDateEnd()).toLocalDateTime()))
+                .filter((timeslot, requestOff) -> requestOff.getPriority() == 1)
+                .penalize("Shift requested off high priority", HardMediumSoftScore.ONE_HARD);
+    }
+
+    Constraint requestOffShiftsMedium(ConstraintFactory constraintFactory) {
+        return constraintFactory.from(Schedule.class)
+                .join(RequestOff.class, equal(Schedule::getPractitioner, RequestOff::getPractitioner))
+                .groupBy(((schedule, requestOff) -> schedule.getTimeslot()),
+                        ((schedule, requestOff) -> requestOff))
+                .filter((timeslot, requestOff) -> ZonedDateTime.parse(timeslot.getStart()).toLocalDateTime()
+                        .isAfter(ZonedDateTime.parse(requestOff.getDateStart()).toLocalDateTime()) &&
+                        ZonedDateTime.parse(timeslot.getStart()).toLocalDateTime().isBefore(ZonedDateTime.parse(requestOff.getDateEnd()).toLocalDateTime()))
+                .filter((timeslot, requestOff) -> requestOff.getPriority() == 2)
+                .penalize("Shift requested off medium priority", HardMediumSoftScore.ONE_MEDIUM);
+    }
+
+    Constraint requestOffShiftsLow(ConstraintFactory constraintFactory) {
+        return constraintFactory.from(Schedule.class)
+                .join(RequestOff.class, equal(Schedule::getPractitioner, RequestOff::getPractitioner))
+                .groupBy(((schedule, requestOff) -> schedule.getTimeslot()),
+                        ((schedule, requestOff) -> requestOff))
+                .filter((timeslot, requestOff) -> ZonedDateTime.parse(timeslot.getStart()).toLocalDateTime()
+                        .isAfter(ZonedDateTime.parse(requestOff.getDateStart()).toLocalDateTime()) &&
+                        ZonedDateTime.parse(timeslot.getStart()).toLocalDateTime().isBefore(ZonedDateTime.parse(requestOff.getDateEnd()).toLocalDateTime()))
+                .filter((timeslot, requestOff) -> requestOff.getPriority() == 3)
+                .penalize("Shift requested off low priority", HardMediumSoftScore.ONE_SOFT);
     }
 
 }

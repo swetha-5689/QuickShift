@@ -29,7 +29,7 @@ import java.util.List;
 public class SolverController {
 
     @PostMapping(path = "/")
-    public ResponseEntity<ScoreExplanation> solve(@RequestBody RequestModel request) {
+    public ResponseEntity<ScoreExplanation<ScheduleTable, HardMediumSoftScore>> solve(@RequestBody RequestModel request) {
         ScheduleTable unsolvedScheduleTable = new ScheduleTable();
         List<Schedule> scheduleList = new ArrayList<>();
         for (int i = 0; i < request.getTimeslots().size(); i++) {
@@ -39,7 +39,7 @@ public class SolverController {
         SolverFactory<ScheduleTable> solverFactory = SolverFactory.create(new SolverConfig()
             .withSolutionClass(ScheduleTable.class).withEntityClasses(Schedule.class)
                 .withConstraintProviderClass(ScheduleTableConstraintProvider.class)
-                .withTerminationSpentLimit(Duration.ofSeconds(60))
+                .withTerminationSpentLimit(Duration.ofSeconds(20))
         );
         Solver<ScheduleTable> solver = solverFactory.buildSolver();
         unsolvedScheduleTable.getPractitioners().addAll(request.getPractitioners());
